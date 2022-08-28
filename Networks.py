@@ -9,7 +9,7 @@ import json
 import os
 
 # from sklearn import preprocessing as pp
-from tqdm import tqdm
+# from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from pyvis.network import Network
 from pyitlib import discrete_random_variable as drv
@@ -332,7 +332,7 @@ class BaseNetwork(object):
             weights[tuple_key] = input_dict['weights'][str(tuple_key)]
         self.weights = weights
 
-    def fit_parameters(self, data: pd.DataFrame, dropna: bool = True):
+    def fit_parameters(self, data: pd.DataFrame, user: str, dropna: bool = True):
         """
         Base function for parameters learning
         """
@@ -340,27 +340,23 @@ class BaseNetwork(object):
             data = data.dropna()
             data.reset_index(inplace=True, drop=True)
 
-        #if self.has_logit:
-        #    if any(['Logit' in node.type for node in self.nodes]):
-        #        if not os.path.isdir(STORAGE):
-        #            os.makedirs(os.path.join(STORAGE, "0"))
-        #        elif os.listdir(STORAGE):
-        #            index = sorted(
-        #                [int(id) for id in os.listdir(STORAGE)]
-        #            )[-1] + 1
-        #            os.makedirs(os.path.join(STORAGE, str(index)))
-
         # Turn all discrete values to str for learning algorithm
         if 'disc_num' in self.descriptor['types'].values():
             columns_names = [name for name, t in self.descriptor['types'].items() if t in ['disc_num']]
             data[columns_names] = data.loc[:, columns_names].astype('str')
 
-        def worker(node):
+        def worker_klein(node):
             return node.fit_parameters(data)
+
+        def worker_gross(node, user):
+            return node.fit_parameters(data, user)
 
         pool = ThreadPoolExecutor(3)
         for node in self.nodes:
-            future = pool.submit(worker, node)
+            if "Logit" in node.type:
+                future = pool.submit(worker_gross, node, user)
+            else:
+                future = pool.submit(worker_klein, node)
             self.distributions[node.name] = future.result()
 
     def get_info(self, as_df: bool = True) -> Optional[pd.DataFrame]:
@@ -441,8 +437,7 @@ class BaseNetwork(object):
             return output
 
         seq = Parallel(n_jobs=parall_count)(
-            delayed(wrapper)()
-            for i in range(n))
+            delayed(wrapper)() for i in range(n))
         seq_df = pd.DataFrame.from_dict(seq, orient='columns')
         seq_df.dropna(inplace=True)
         cont_nodes = [c.name for c in self.nodes if c.type != 'Discrete' and 'Logit' not in c.type]

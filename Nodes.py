@@ -649,7 +649,7 @@ class LogitNode(BaseNode):
         self.classifier = classifier
         self.type = 'Logit' + f" ({type(self.classifier).__name__})"
 
-    def fit_parameters(self, data: DataFrame) -> LogitParams:
+    def fit_parameters(self, data: DataFrame, user: str) -> LogitParams:
         parents = self.disc_parents + self.cont_parents
         self.classifier.fit(data[parents].values, data[self.name].values)
         serialization = self.choose_serialization(self.classifier)
@@ -663,21 +663,19 @@ class LogitNode(BaseNode):
                     'classifier': type(self.classifier).__name__,
                     'serialization': 'pickle'}
         else:
-            pass
-            #logger_nodes.warning(f"{self.name}::Pickle failed. BAMT will use Joblib. | " + str(serialization.args[0]))
-            #index = str(int(os.listdir(STORAGE)[-1]))
-            #if not os.path.isdir(os.path.join(STORAGE, index, f"{self.name.replace(' ', '_')}")):
-            #    os.makedirs(os.path.join(STORAGE, index, f"{self.name.replace(' ', '_')}"))
-            #path = os.path.abspath(os.path.join(STORAGE,
-            #                                    index,
-            #                                    f"{self.name.replace(' ', '_')}",
-            #                                    f"{self.name.replace(' ', '_')}.joblib.compressed"))
+            logger_nodes.warning(f"{self.name}::Pickle failed. BAMT will use Joblib. | " + str(serialization.args[0]))
 
-            #joblib.dump(self.classifier, path, compress=True, protocol=4)
-            #return {'classes': list(self.classifier.classes_),
-            #        'classifier_obj': path,
-            #        'classifier': type(self.classifier).__name__,
-            #        'serialization': 'joblib'}
+            node_path = os.path.abspath(
+                os.path.join(STORAGE, user, f"{self.name.replace(' ', '_')}")
+            )
+            os.makedirs(node_path)
+            path = os.path.abspath(os.path.join(node_path, f"{self.name.replace(' ', '_')}.joblib.compressed"))
+
+            joblib.dump(self.classifier, path, compress=True, protocol=4)
+            return {'classes': list(self.classifier.classes_),
+                    'classifier_obj': path,
+                    'classifier': type(self.classifier).__name__,
+                    'serialization': 'joblib'}
 
     def choose(self, node_info: LogitParams, pvals: List[Union[str, float]]) -> str:
         """
@@ -692,8 +690,7 @@ class LogitNode(BaseNode):
 
         if len(node_info["classes"]) > 1:
             if node_info["serialization"] == 'joblib':
-                pass
-                # model = joblib.load(node_info["classifier_obj"])
+                model = joblib.load(node_info["classifier_obj"])
             else:
                 # str_model = node_info["classifier_obj"].decode('latin1').replace('\'', '\"')
                 a = node_info["classifier_obj"].encode('latin1')
@@ -729,8 +726,7 @@ class LogitNode(BaseNode):
 
         if len(node_info["classes"]) > 1:
             if node_info["serialization"] == 'joblib':
-                pass
-                #model = joblib.load(node_info["classifier_obj"])
+                model = joblib.load(node_info["classifier_obj"])
             else:
                 # str_model = node_info["classifier_obj"].decode('latin1').replace('\'', '\"')
                 a = node_info["classifier_obj"].encode('latin1')
@@ -756,7 +752,7 @@ class ConditionalLogitNode(BaseNode):
         self.classifier = classifier
         self.type = 'ConditionalLogit' + f" ({type(self.classifier).__name__})"
 
-    def fit_parameters(self, data: DataFrame) -> Dict[str, Dict[str, LogitParams]]:
+    def fit_parameters(self, data: DataFrame, user: str) -> Dict[str, Dict[str, LogitParams]]:
         """
         Train params on data
         Return:
@@ -795,22 +791,20 @@ class ConditionalLogitNode(BaseNode):
                                                   'classifier': type(self.classifier).__name__,
                                                   'serialization': 'pickle'}
                     else:
-                        pass
-                        #logger_nodes.warning(
-                        #    f"{self.name} {comb}::Pickle failed. BAMT will use Joblib. | " + str(serialization.args[0]))
-                        #index = str(int(os.listdir(STORAGE)[-1]))
-                        #if not os.path.isdir(os.path.join(STORAGE, index, f"{self.name.replace(' ', '_')}")):
-                        #    os.makedirs(os.path.join(STORAGE, index, f"{self.name.replace(' ', '_')}"))
-                        #path = os.path.abspath(os.path.join(STORAGE,
-                        #                                    index,
-                        #                                    f"{self.name.replace(' ', '_')}",
-                        #                                    f"{comb}.joblib.compressed"))
-				
-                        #joblib.dump(model, path, compress=True, protocol=4)
-                        #hycprob[str(key_comb)] = {'classes': classes,
-                        #                          'classifier_obj': path,
-                        #                          'classifier': type(self.classifier).__name__,
-                        #                          'serialization': 'joblib'}
+                        logger_nodes.warning(
+                            f"{self.name} {comb}::Pickle failed. BAMT will use Joblib. | " + str(serialization.args[0]))
+
+                        node_path = os.path.abspath(
+                            os.path.join(STORAGE, user, f"{self.name.replace(' ', '_')}")
+                        )
+                        os.makedirs(node_path)
+                        path = os.path.abspath(os.path.join(node_path, f"{comb}.joblib.compressed"))
+
+                        joblib.dump(model, path, compress=True, protocol=4)
+                        hycprob[str(key_comb)] = {'classes': classes,
+                                                  'classifier_obj': path,
+                                                  'classifier': type(self.classifier).__name__,
+                                                  'serialization': 'joblib'}
                 else:
                     classes = list(values)
                     hycprob[str(key_comb)] = {'classes': classes, 'classifier': type(self.classifier).__name__,
@@ -842,8 +836,7 @@ class ConditionalLogitNode(BaseNode):
         # JOBLIB
         if len(lgdistribution["classes"]) > 1:
             if lgdistribution["serialization"] == 'joblib':
-                pass
-                # model = joblib.load(lgdistribution["classifier_obj"])
+                model = joblib.load(lgdistribution["classifier_obj"])
             else:
                 # str_model = lgdistribution["classifier_obj"].decode('latin1').replace('\'', '\"')
                 bytes_model = lgdistribution["classifier_obj"].encode('latin1')
@@ -888,8 +881,7 @@ class ConditionalLogitNode(BaseNode):
         # JOBLIB
         if len(lgdistribution["classes"]) > 1:
             if lgdistribution["serialization"] == 'joblib':
-                pass
-                # model = joblib.load(lgdistribution["classifier_obj"])
+                model = joblib.load(lgdistribution["classifier_obj"])
             else:
                 # str_model = lgdistribution["classifier_obj"].decode('latin1').replace('\'', '\"')
                 bytes_model = lgdistribution["classifier_obj"].encode('latin1')
