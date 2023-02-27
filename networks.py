@@ -16,10 +16,10 @@ from pyitlib import discrete_random_variable as drv
 from typing import Dict, Tuple, List, Callable, Optional, Type, Union, Any, Sequence
 
 from bamt.utils.MathUtils import get_brave_matrix, get_proximity_matrix
-from bamt.Builders import ParamDict
+from bamt.builders import ParamDict
 from bamt.log import logger_network
 from bamt.config import config
-from bamt import Builders, Nodes
+from bamt import builders, nodes
 
 # from bamt.Preprocessors import Preprocessor
 
