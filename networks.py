@@ -54,7 +54,7 @@ class BaseNetwork(object):
     def nodes_names(self) -> List[str]:
         return [node.name for node in self.nodes]
 
-    def __getitem__(self, node_name: str) -> Type[Nodes.BaseNode]:
+    def __getitem__(self, node_name: str) -> Type[nodes.BaseNode]:
         if node_name in self.nodes_names:
             index = self.nodes_names.index(node_name)
             return self.nodes[index]
