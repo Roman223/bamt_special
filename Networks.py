@@ -9,12 +9,13 @@ import json
 import os
 
 # from sklearn import preprocessing as pp
-# from tqdm import tqdm
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from pyvis.network import Network
 from pyitlib import discrete_random_variable as drv
 from typing import Dict, Tuple, List, Callable, Optional, Type, Union, Any, Sequence
 
+from bamt.utils.MathUtils import get_brave_matrix, get_proximity_matrix
 from bamt.Builders import ParamDict
 from bamt.log import logger_network
 from bamt.config import config
@@ -22,7 +23,8 @@ from bamt import Builders, Nodes
 
 # from bamt.Preprocessors import Preprocessor
 
-STORAGE = config.get('NODES', 'models_storage', fallback='models_storage is not defined')
+STORAGE = config.get('NODES', 'models_storage',
+                     fallback='models_storage is not defined')
 
 
 class BaseNetwork(object):
@@ -65,8 +67,9 @@ class BaseNetwork(object):
         new_nodes_names = [node.name for node in self.nodes]
         self.descriptor['types'] = {node: type for node, type in self.descriptor['types'].items() if
                                     node in new_nodes_names}
-        self.descriptor['signs'] = {node: sign for node, sign in self.descriptor['signs'].items() if
-                                    node in new_nodes_names}
+        if "cont" in self.descriptor["types"].values():
+            self.descriptor['signs'] = {node: sign for node, sign in self.descriptor['signs'].items() if
+                                        node in new_nodes_names}
 
     def add_nodes(self, descriptor: Dict[str, Dict[str, str]]):
         """
@@ -90,6 +93,7 @@ class BaseNetwork(object):
         self.nodes = worker_1.vertices
 
     def add_edges(self, data: pd.DataFrame, scoring_function: Union[Tuple[str, Callable], Tuple[str]],
+                  progress_bar: bool = True,
                   classifier: Optional[object] = None,
                   params: Optional[ParamDict] = None, optimizer: str = 'HC'):
         """
@@ -101,7 +105,8 @@ class BaseNetwork(object):
         white_list: list of allowed edges
         """
         if not self.has_logit and classifier:
-            logger_network.error("Classifiers dict will be ignored since logit nodes are forbidden.")
+            logger_network.error(
+                "Classifiers dict will be ignored since logit nodes are forbidden.")
             return None
 
         # params validation
@@ -110,17 +115,19 @@ class BaseNetwork(object):
             if not self.has_logit and "init_edges" in params.keys():
                 type_map = np.array([
                     [self.descriptor["types"][node1], self.descriptor["types"][node2]] for node1, node2 in
-                     params["init_edges"]]
+                    params["init_edges"]]
                 )
                 failed = (
                         (type_map[:, 0] == "cont") &
-                        ((type_map[:, 1] == "disc") | (type_map[:, 1] == "disc_num"))
+                        ((type_map[:, 1] == "disc") |
+                         (type_map[:, 1] == "disc_num"))
                 )
                 if sum(failed):
                     logger_network.warning(
                         f"Edges between continuous nodes and disc nodes are forbidden (has_logit = {self.has_logit}), "
                         f"they will be ignored. Indexes: {np.where(failed)[0]}")
-                    params["init_edges"] = [params["init_edges"][i] for i in range(len(params["init_edges"])) if i not in np.where(failed)[0]]       
+                    params["init_edges"] = [params["init_edges"][i] for i in range(len(params["init_edges"]))
+                                            if i not in np.where(failed)[0]]
 
         if not self.validate(descriptor=self.descriptor):
             logger_network.error(
@@ -135,7 +142,7 @@ class BaseNetwork(object):
 
             self.sf_name = scoring_function[0]
 
-            worker.build(data=data, params=params, classifier=classifier)
+            worker.build(data=data, params=params, classifier=classifier, progress_bar=progress_bar)
 
             # update family
             self.nodes = worker.skeleton['V']
@@ -150,9 +157,11 @@ class BaseNetwork(object):
             logger_network.error(f"calculate_weghts() method deals only with discrete data. Continuous data: " +
                                  f"{[col for col, type in gru.nodes_types(discretized_data).items() if type not in ['disc', 'disc_num']]}")
         if not self.edges:
-            logger_network.error("Bayesian Network hasn't fitted yet. Please add edges with add_edges() method")
+            logger_network.error(
+                "Bayesian Network hasn't fitted yet. Please add edges with add_edges() method")
         if not self.nodes:
-            logger_network.error("Bayesian Network hasn't fitted yet. Please add nodes with add_nodes() method")
+            logger_network.error(
+                "Bayesian Network hasn't fitted yet. Please add nodes with add_nodes() method")
         weights = dict()
 
         for node in self.nodes:
@@ -169,12 +178,15 @@ class BaseNetwork(object):
             else:
                 for parent_node in parents:
                     x = discretized_data[parent_node].values
-                    other_parents = [tmp for tmp in parents if tmp != parent_node]
+                    other_parents = [
+                        tmp for tmp in parents if tmp != parent_node]
                     z = list()
                     for other_parent in other_parents:
                         z.append(list(discretized_data[other_parent].values))
-                    LS_true = np.average(drv.information_mutual_conditional(X=y, Y=x, Z=z, cartesian_product=True))
-                    entropy = np.average(drv.entropy_conditional(X=y, Y=z, cartesian_product=True)) + 1e-8
+                    LS_true = np.average(drv.information_mutual_conditional(
+                        X=y, Y=x, Z=z, cartesian_product=True))
+                    entropy = np.average(drv.entropy_conditional(
+                        X=y, Y=z, cartesian_product=True)) + 1e-8
                     weight = LS_true / entropy
                     weights[(parent_node, node.name)] = weight
         self.weights = weights
@@ -186,7 +198,8 @@ class BaseNetwork(object):
         :param nodes dict with name and node (if a lot of nodes should be added)
         """
         if not info and not self.descriptor["types"]:
-            logger_network.error("In case of manual setting nodes user should set map for them as well.")
+            logger_network.error(
+                "In case of manual setting nodes user should set map for them as well.")
             return
         self.nodes = []
         for node in nodes:
@@ -195,7 +208,8 @@ class BaseNetwork(object):
                 self.nodes.append(node)
                 continue
             except AssertionError:
-                logger_network.error(f"{node} is not an instance of {Nodes.BaseNode}")
+                logger_network.error(
+                    f"{node} is not an instance of {Nodes.BaseNode}")
                 continue
             except TypeError:
                 logger_network.error(f"TypeError : {node.__class__}")
@@ -216,12 +230,19 @@ class BaseNetwork(object):
         for node1, node2 in edges:
             if isinstance(node1, str) and isinstance(node2, str):
                 if self[node1] and self[node2]:
-                    self.edges.append((node1, node2))
+                    if not self.has_logit and \
+                            self.descriptor["types"][node1] == "cont" and \
+                            self.descriptor["types"][node2] == "disc":
+                        logger_network.warning(f"Restricted edge detected (has_logit=False) : [{node1}, {node2}]")
+                        continue
+                    else:
+                        self.edges.append((node1, node2))
                 else:
-                    logger_network.error(f"Unknown Nodes : [{node1}, {node2}]")
+                    logger_network.error(f"Unknown nodes : [{node1}, {node2}]")
                     continue
             else:
-                logger_network.error(f"Unknown node(s) type: [{node1.__class__}, {node2.__class__}]")
+                logger_network.error(
+                    f"Unknown node(s) type: [{node1.__class__}, {node2.__class__}]")
                 continue
         self.update_descriptor()
 
@@ -241,12 +262,14 @@ class BaseNetwork(object):
         if edges:
             self.set_edges(edges=edges)
             if overwrite:
-                builder = Builders.VerticesDefiner(descriptor=self.descriptor)  # init worker
+                builder = Builders.VerticesDefiner(
+                    descriptor=self.descriptor)  # init worker
                 builder.skeleton['V'] = builder.vertices  # 1 stage
                 builder.skeleton['E'] = self.edges
                 builder.get_family()
                 if self.edges:
-                    builder.overwrite_vertex(has_logit=self.has_logit, use_mixture=self.use_mixture)
+                    builder.overwrite_vertex(
+                        has_logit=self.has_logit, use_mixture=self.use_mixture)
                     self.set_nodes(nodes=builder.skeleton['V'])
                 else:
                     logger_network.error("Empty set of edges")
@@ -261,7 +284,8 @@ class BaseNetwork(object):
                     return False
             return True
         else:
-            logger_network.error("Param validation failed due to unknown nodes.")
+            logger_network.error(
+                "Param validation failed due to unknown nodes.")
             return False
 
     def set_parameters(self, parameters: Dict):
@@ -271,6 +295,29 @@ class BaseNetwork(object):
         # pass
 
         self.distributions = parameters
+
+        for node, data in self.distributions.items():
+            if "hybcprob" in data.keys():
+                # first_item = next(iter(data["hybcprob"].values()))
+                if "mixture" in self[node].type.lower():
+                    continue
+                else:
+                    if "gaussian" in self[node].type.lower():
+                        model_type = "regressor"
+                    else:
+                        model_type = "classifier"
+
+                    model = None
+                    for v in data["hybcprob"].values():
+                        if v[model_type]:
+                            model = v[model_type]
+                            break
+                        else:
+                            continue
+                    if not model:
+                        logger_network.warning(f"Classifier/regressor for {node} hadn't been used.")
+
+                    self[node].type = re.sub(r"\([\s\S]*\)", f"({model})", self[node].type)
 
     def save_params(self, outdir: str):
         """
@@ -319,11 +366,36 @@ class BaseNetwork(object):
         Function to load the whole BN from json file
         :param input_dir: input directory
         """
+
+        class CompatibilityError(Exception):
+            def __init__(self, type: str):
+                """
+                Args:
+                    type: either use_mixture or has_logit is wrong
+                """
+                super().__init__(f"This parameter is not the same as father's parameter: {type}")
+
         with open(input_dir) as f:
             input_dict = json.load(f)
 
         self.add_nodes(input_dict['info'])
         self.set_structure(edges=input_dict['edges'])
+
+        # check compatibility with father network.
+        if not self.use_mixture:
+            for node_data in input_dict['parameters'].values():
+                if 'hybcprob' not in node_data.keys():
+                    continue
+                else:
+                    # Since we don't have information about types of nodes, we should derive it from parameters.
+                    if any(list(node_keys.keys()) == ["covars", "mean", "coef"]
+                            for node_keys in node_data['hybcprob'].values()):
+                        raise CompatibilityError("use_mixture")
+
+        if not self.has_logit:
+            if not all(ob1 ==[ob2[0], ob2[1]] for ob1, ob2 in zip(input_dict['edges'], self.edges)):
+                raise CompatibilityError("has_logit")
+
         self.set_parameters(parameters=input_dict['parameters'])
         str_keys = list(input_dict['weights'].keys())
         tuple_keys = [eval(key) for key in str_keys]
@@ -342,7 +414,8 @@ class BaseNetwork(object):
 
         # Turn all discrete values to str for learning algorithm
         if 'disc_num' in self.descriptor['types'].values():
-            columns_names = [name for name, t in self.descriptor['types'].items() if t in ['disc_num']]
+            columns_names = [name for name, t in self.descriptor['types'].items() if t in [
+                'disc_num']]
             data[columns_names] = data.loc[:, columns_names].astype('str')
 
         def worker_klein(node):
@@ -371,8 +444,10 @@ class BaseNetwork(object):
                 names.append(n)
                 types_n.append(n.type)
                 types_d.append(self.descriptor['types'][n.name])
-                parents_types.append([self.descriptor['types'][name] for name in n.cont_parents + n.disc_parents])
-                parents.append([name for name in n.cont_parents + n.disc_parents])
+                parents_types.append([self.descriptor['types'][name]
+                                      for name in n.cont_parents + n.disc_parents])
+                parents.append(
+                    [name for name in n.cont_parents + n.disc_parents])
             return pd.DataFrame({'name': names, 'node_type': types_n,
                                  'data_type': types_d, 'parents': parents,
                                  'parents_types': parents_types})
@@ -383,6 +458,8 @@ class BaseNetwork(object):
 
     def sample(self,
                n: int,
+               models_dir: Optional[str] = None,
+               progress_bar: bool = True,
                evidence: Optional[Dict[str, Union[str, int, float]]] = None,
                as_df: bool = True,
                predict: bool = False,
@@ -398,7 +475,8 @@ class BaseNetwork(object):
 
         random.seed()
         if not self.distributions.items():
-            logger_network.error("Parameter learning wasn't done. Call fit_parameters method")
+            logger_network.error(
+                "Parameter learning wasn't done. Call fit_parameters method")
             return None
         if evidence:
             for node in self.nodes:
@@ -426,22 +504,37 @@ class BaseNetwork(object):
                             output[node.name] = np.nan
                             continue
 
+                    node_data = self.distributions[node.name]
+                    if models_dir and ("hybcprob" in node_data.keys()):
+                        for obj, obj_data in node_data["hybcprob"].items():
+                            if "serialization" in obj_data.keys():
+                                if "gaussian" in node.type.lower():
+                                    model_type = "regressor"
+                                else:
+                                    model_type = "classifier"
+                                if obj_data["serialization"] == 'joblib' and obj_data[f"{model_type}_obj"]:
+                                    new_path = models_dir + f"\\{node.name.replace(' ', '_')}\\{obj}.joblib.compressed"
+                                    node_data["hybcprob"][obj][f"{model_type}_obj"] = new_path
+
                     if predict:
                         output[node.name] = \
-                            node.predict(
-                                self.distributions[node.name], pvals=pvals)
+                            node.predict(node_data, pvals=pvals)
                     else:
                         output[node.name] = \
-                            node.choose(
-                                self.distributions[node.name], pvals=pvals)
+                            node.choose(node_data, pvals=pvals)
             return output
 
-        seq = Parallel(n_jobs=parall_count)(
-            delayed(wrapper)() for i in range(n))
+        if progress_bar:
+            seq = Parallel(n_jobs=parall_count)(
+                delayed(wrapper)() for _ in tqdm(range(n), position=0, leave=True))
+        else:
+            seq = Parallel(n_jobs=parall_count)(delayed(wrapper)() for _ in range(n))
         seq_df = pd.DataFrame.from_dict(seq, orient='columns')
         seq_df.dropna(inplace=True)
-        cont_nodes = [c.name for c in self.nodes if c.type != 'Discrete' and 'Logit' not in c.type]
-        positive_columns = [c for c in cont_nodes if self.descriptor['signs'][c] == 'pos']
+        cont_nodes = [c.name for c in self.nodes if c.type !=
+                      'Discrete' and 'Logit' not in c.type]
+        positive_columns = [
+            c for c in cont_nodes if self.descriptor['signs'][c] == 'pos']
         seq_df = seq_df[(seq_df[positive_columns] >= 0).all(axis=1)]
         seq_df.reset_index(inplace=True, drop=True)
         seq = seq_df.to_dict('records')
@@ -451,7 +544,8 @@ class BaseNetwork(object):
         else:
             return seq
 
-    def predict(self, test: pd.DataFrame, parall_count: int = 1) -> Dict[str, Union[List[str], List[int], List[float]]]:
+    def predict(self, test: pd.DataFrame, parall_count: int = 1,
+                progress_bar: bool = True) -> Dict[str, Union[List[str], List[int], List[float]]]:
         """
         Function to predict columns from given data.
         Note that train data and test data must have different columns.
@@ -478,7 +572,10 @@ class BaseNetwork(object):
                     test_row = dict(test.iloc[i, :])
                     for n, key in enumerate(columns):
                         try:
-                            sample = bn.sample(1, evidence=test_row, predict=True)
+                            sample = bn.sample(1, evidence=test_row, predict=True, progress_bar=False)
+                            if sample.empty:
+                                preds[key].append(np.nan)
+                                continue
                             if bn.descriptor['types'][key] == 'cont':
                                 if (bn.descriptor['signs'][key] == 'pos') & (sample.loc[0, key] < 0):
                                     # preds[key].append(np.nan)
@@ -492,7 +589,8 @@ class BaseNetwork(object):
                             preds[key].append(np.nan)
                 return preds
             else:
-                logger_network.error('Wrapper for one row from pandas.DataFrame')
+                logger_network.error(
+                    'Wrapper for one row from pandas.DataFrame')
                 return {}
 
         columns = list(set(self.nodes_names) - set(test.columns.to_list()))
@@ -502,8 +600,15 @@ class BaseNetwork(object):
 
         preds = {column_name: list() for column_name in columns}
 
-        processed_list = Parallel(n_jobs=parall_count)(
-            delayed(wrapper)(self, test.loc[[i]], columns) for i in test.index)
+        # processed_list = Parallel(n_jobs=parall_count)(
+        #     delayed(wrapper)(self, test.loc[[i]], columns) for i in tqdm(test.index, position=0, leave=True))
+
+        if progress_bar:
+            processed_list = Parallel(n_jobs=parall_count)(
+                delayed(wrapper)(self, test.loc[[i]], columns) for i in tqdm(test.index, position=0, leave=True))
+        else:
+            processed_list = Parallel(n_jobs=parall_count)(
+                delayed(wrapper)(self, test.loc[[i]], columns) for i in test.index)
 
         for i in range(test.shape[0]):
             curr_pred = processed_list[i]
@@ -528,7 +633,22 @@ class BaseNetwork(object):
             if "Logit" in node.type:
                 if node.name in classifiers.keys():
                     node.classifier = classifiers[node.name]
-                    node.type = re.sub(r"\([\s\S]*\)", f"({type(node.classifier).__name__})", node.type)
+                    node.type = re.sub(
+                        r"\([\s\S]*\)", f"({type(node.classifier).__name__})", node.type)
+                else:
+                    continue
+
+    def set_regressor(self, regressors: Dict[str, object]):
+        """
+        Set classifiers for gaussian nodes.
+        classifiers: dict with node_name and Classifier
+        """
+
+        for node in self.nodes:
+            if "Gaussian" in node.type:
+                if node.name in regressors.keys():
+                    node.regressor = regressors[node.name]
+                    node.type = re.sub(r"\([\s\S]*\)", f"({type(node.regressor).__name__})", node.type)
                 else:
                     continue
 
@@ -550,7 +670,8 @@ class BaseNetwork(object):
         network = Network(height="800px", width="100%", notebook=True, directed=nx.is_directed(G),
                           layout='hierarchical')
 
-        nodes_sorted = np.array(list(nx.topological_generations(G)), dtype=object)
+        nodes_sorted = np.array(
+            list(nx.topological_generations(G)), dtype=object)
 
         # Qualitative class of colormaps
         q_classes = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20',
@@ -569,9 +690,11 @@ class BaseNetwork(object):
         class_number = len(
             set([node.type for node in self.nodes])
         )
-        hex_colors_indexes = [random.randint(0, len(hex_colors) - 1) for _ in range(class_number)]
+        hex_colors_indexes = [random.randint(
+            0, len(hex_colors) - 1) for _ in range(class_number)]
         hex_colors_picked = hex_colors[hex_colors_indexes]
-        class2color = {cls: color for cls, color in zip(set([node.type for node in self.nodes]), hex_colors_picked)}
+        class2color = {cls: color for cls, color in zip(
+            set([node.type for node in self.nodes]), hex_colors_picked)}
         name2class = {node.name: node.type for node in self.nodes}
 
         for level in range(len(nodes_sorted)):
@@ -638,3 +761,42 @@ class HybridBN(BaseNetwork):
         s = set(types.values())
         return True if ({'cont', 'disc', 'disc_num'} == s) or ({'cont', 'disc'} == s) or (
                 {'cont', 'disc_num'} == s) else False
+
+
+class BigBraveBN:
+
+    def __init__(self, n_nearest=5, threshold=.3, proximity_metric='MI'):
+        self.n_nearest = n_nearest
+        self.threshold = threshold
+        self.proximity_metric = proximity_metric
+        self.possible_edges = []
+
+    def set_possible_edges_by_brave(self, df):
+        """Returns list of possible edges for structure learning
+
+        Args:
+            df (DataFrame): data
+            proximity_matrix (DataFrame): might be generated by get_mutual_info_score_matrix() function,
+                                                                                                        correlation etc.
+            n_nearest (int, optional): Number of Nearest neighbors, hyperparameter. Defaults to 5.
+            custom_threshold (bool, optional): Must be set true to redact threshold, then set threshold.
+                                                                                                    Defaults to False.
+            threshold (float, optional): Threshold for edge candidates to be passed to possible edges, threshold.
+                                                                                                Defaults to 0.3 [0;1].
+
+        Returns:
+            Possible edges: list of possible edges
+        """
+
+        proximity_matrix = get_proximity_matrix(
+            df, proximity_metric=self.proximity_metric)
+        brave_matrix = get_brave_matrix(df.columns, proximity_matrix, self.n_nearest)
+
+        possible_edges_list = []
+
+        for c1 in df.columns:
+            for c2 in df.columns:
+                if brave_matrix.loc[c1, c2] > brave_matrix.max(numeric_only='true').max() * self.threshold:
+                    possible_edges_list.append((c1, c2))
+
+        self.possible_edges = possible_edges_list

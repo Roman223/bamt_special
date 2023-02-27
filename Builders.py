@@ -12,7 +12,7 @@ from bamt.utils import GraphUtils as gru
 from typing import Dict, List, Optional, Tuple, Callable, TypedDict, Union
 
 
-class ParamDict(TypedDict):
+class ParamDict(TypedDict, total=False):
     init_edges: Optional[Tuple[str, str]]
     init_nodes: Optional[List[str]]
     remove_init_edges: bool
@@ -52,9 +52,9 @@ class StructureBuilder(object):
         node_type = self.descriptor['types']
         blacklist = []
         datacol = data.columns.to_list()
-        
+
         if not self.has_logit:
-          
+
             # Has_logit flag allows BN building edges between cont and disc
             RESTRICTIONS = [('cont', 'disc'), ('cont', 'disc_num')]
             for x, y in itertools.product(datacol, repeat=2):
@@ -71,7 +71,7 @@ class StructureBuilder(object):
 
     def get_family(self):
         """
-        A function that update a skeleton;
+        A function that updates a skeleton;
         """
         if not self.skeleton['V']:
             logger_builder.error("Vertex list is None")
@@ -126,9 +126,9 @@ class VerticesDefiner(StructureBuilder):
         # LEVEL 1: Define a general type of node: Discrete or Gaussian
         for vertex, type in self.descriptor['types'].items():
             if type in ['disc_num', 'disc']:
-                Node = Nodes.DiscreteNode(name=vertex)
+                Node = nodes.DiscreteNode(name=vertex)
             elif type == 'cont':
-                Node = Nodes.GaussianNode(name=vertex)
+                Node = nodes.GaussianNode(name=vertex)
             else:
                 msg = f"""First stage of automatic vertex detection failed on {vertex} due TypeError ({type}).
                 Set vertex manually (by calling set_nodes()) or investigate the error."""
@@ -150,23 +150,23 @@ class VerticesDefiner(StructureBuilder):
                 if 'Discrete' in node_instance.type:
                     if node_instance.cont_parents:
                         if not node_instance.disc_parents:
-                            Node = Nodes.LogitNode(name=node_instance.name, classifier=classifier)
+                            Node = nodes.LogitNode(name=node_instance.name, classifier=classifier)
 
                         elif node_instance.disc_parents:
-                            Node = Nodes.ConditionalLogitNode(name=node_instance.name, classifier=classifier)
+                            Node = nodes.ConditionalLogitNode(name=node_instance.name, classifier=classifier)
 
             if use_mixture:
                 if 'Gaussian' in node_instance.type:
                     if not node_instance.disc_parents:
-                        Node = Nodes.MixtureGaussianNode(name=node_instance.name)
+                        Node = nodes.MixtureGaussianNode(name=node_instance.name)
                     elif node_instance.disc_parents:
-                        Node = Nodes.ConditionalMixtureGaussianNode(name=node_instance.name)
+                        Node = nodes.ConditionalMixtureGaussianNode(name=node_instance.name)
                     else:
                         continue
             else:
                 if 'Gaussian' in node_instance.type:
                     if node_instance.disc_parents:
-                        Node = Nodes.ConditionalGaussianNode(name=node_instance.name)
+                        Node = nodes.ConditionalGaussianNode(name=node_instance.name)
                     else:
                         continue
 
@@ -189,6 +189,7 @@ class HillClimbDefiner(EdgesDefiner, VerticesDefiner):
     """
     Object to define structure and pass it into skeleton
     """
+
     def __init__(self, data: DataFrame, descriptor: Dict[str, Dict[str, str]],
                  scoring_function: Union[Tuple[str, Callable], Tuple[str]]):
         """
@@ -208,18 +209,19 @@ class HillClimbDefiner(EdgesDefiner, VerticesDefiner):
         super(HillClimbDefiner, self).__init__(descriptor)
 
     def apply_K2(self, data: DataFrame, init_edges: Optional[List[Tuple[str, str]]],
-                 remove_init_edges: bool, white_list: Optional[List[Tuple[str, str]]]):
+                 progress_bar: bool, remove_init_edges: bool, white_list: Optional[List[Tuple[str, str]]]):
         """
         :param init_edges: list of tuples, a graph to start learning with
         :param remove_init_edges: allows changes in model defined by user
+        :param progress_bar: verbose regime
         :param white_list: list of allowed edges
         """
-        import bamt.utils.GraphUtils as gru
+        import utils.GraphUtils as gru
         if not all([i in ['disc', 'disc_num'] for i in gru.nodes_types(data).values()]):
             logger_builder.error(
                 f"K2 deals only with discrete data. Continuous data: {[col for col, type in gru.nodes_types(data).items() if type not in ['disc', 'disc_num']]}")
             return None
-        
+
         if len(self.scoring_function) != 2:
             from pgmpy.estimators import K2Score
             scoring_function = K2Score
@@ -231,10 +233,10 @@ class HillClimbDefiner(EdgesDefiner, VerticesDefiner):
                 scoring_method=scoring_function(data),
                 black_list=self.black_list,
                 white_list=white_list,
-                show_progress=False
+                show_progress=progress_bar
             )
         else:
-            
+
             if remove_init_edges:
                 startdag = DAG()
                 nodes = [str(v) for v in self.vertices]
@@ -249,7 +251,7 @@ class HillClimbDefiner(EdgesDefiner, VerticesDefiner):
         structure = [list(x) for x in list(best_model.edges())]
         self.skeleton['E'] = structure
 
-    def apply_group1(self, data: DataFrame, init_edges: Optional[List[Tuple[str, str]]],
+    def apply_group1(self, data: DataFrame, progress_bar: bool, init_edges: Optional[List[Tuple[str, str]]],
                      remove_init_edges: bool, white_list: Optional[List[Tuple[str, str]]]):
         # (score == "MI") | (score == "LL") | (score == "BIC") | (score == "AIC")
         column_name_dict = dict([(n.name, i) for i, n in enumerate(self.vertices)])
@@ -268,7 +270,7 @@ class HillClimbDefiner(EdgesDefiner, VerticesDefiner):
                 init_edges.append((column_name_dict[pair[0]], column_name_dict[pair[1]]))
 
         bn = hc_method(data, metric=self.scoring_function[0], restriction=white_list, init_edges=init_edges,
-                       remove_geo_edges=remove_init_edges, black_list=blacklist_new, debug=False)
+                       remove_geo_edges=remove_init_edges, black_list=blacklist_new, debug=progress_bar)
         structure = []
         nodes = sorted(list(bn.nodes()))
         for rv in nodes:
@@ -291,14 +293,14 @@ class HCStructureBuilder(HillClimbDefiner):
         :param data: train data
         :param descriptor: map for data
         """
-       
-        
+
         super(HCStructureBuilder, self).__init__(descriptor=descriptor, data=data,
                                                  scoring_function=scoring_function)
         self.use_mixture = use_mixture
         self.has_logit = has_logit
 
     def build(self, data: DataFrame,
+              progress_bar: bool,
               classifier: Optional[object],
               params: Optional[ParamDict] = None):
         if params:
@@ -307,20 +309,18 @@ class HCStructureBuilder(HillClimbDefiner):
 
         init_nodes = self.params.pop('init_nodes')
         bl_add = self.params.pop('bl_add')
-   
-
 
         # Level 1
         self.skeleton['V'] = self.vertices
 
         self.restrict(data, init_nodes, bl_add)
         if self.scoring_function[0] == 'K2':
-            self.apply_K2(data=data, **self.params)
+            self.apply_K2(data=data, progress_bar=progress_bar, **self.params)
         elif self.scoring_function[0] in ['MI', 'LL', 'BIC', 'AIC']:
-            self.apply_group1(data=data, **self.params)
+            self.apply_group1(data=data, progress_bar=progress_bar, **self.params)
 
         # Level 2
-      
+
         self.get_family()
         self.overwrite_vertex(has_logit=self.has_logit,
                               use_mixture=self.use_mixture,
