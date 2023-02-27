@@ -4,7 +4,7 @@ from pgmpy.base import DAG
 from pgmpy.estimators import HillClimbSearch
 from bamt.redef_HC import hc as hc_method
 
-from bamt import Nodes
+from bamt import nodes
 from bamt.log import logger_builder
 from pandas import DataFrame
 from bamt.utils import GraphUtils as gru

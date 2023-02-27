@@ -16,10 +16,10 @@ from pyitlib import discrete_random_variable as drv
 from typing import Dict, Tuple, List, Callable, Optional, Type, Union, Any, Sequence
 
 from bamt.utils.MathUtils import get_brave_matrix, get_proximity_matrix
-from bamt.Builders import ParamDict
+from bamt.builders import ParamDict
 from bamt.log import logger_network
 from bamt.config import config
-from bamt import Builders, Nodes
+from bamt import builders, nodes
 
 # from bamt.Preprocessors import Preprocessor
 
@@ -54,7 +54,7 @@ class BaseNetwork(object):
     def nodes_names(self) -> List[str]:
         return [node.name for node in self.nodes]
 
-    def __getitem__(self, node_name: str) -> Type[Nodes.BaseNode]:
+    def __getitem__(self, node_name: str) -> Type[nodes.BaseNode]:
         if node_name in self.nodes_names:
             index = self.nodes_names.index(node_name)
             return self.nodes[index]
@@ -89,7 +89,7 @@ class BaseNetwork(object):
             return None
         self.descriptor = descriptor
         # LEVEL 1
-        worker_1 = Builders.VerticesDefiner(descriptor)
+        worker_1 = builders.VerticesDefiner(descriptor)
         self.nodes = worker_1.vertices
 
     def add_edges(self, data: pd.DataFrame, scoring_function: Union[Tuple[str, Callable], Tuple[str]],
@@ -134,7 +134,7 @@ class BaseNetwork(object):
                 f"{self.type} BN does not support {'discrete' if self.type == 'Continuous' else 'continuous'} data")
             return None
         if optimizer == 'HC':
-            worker = Builders.HCStructureBuilder(data=data,
+            worker = builders.HCStructureBuilder(data=data,
                                                  descriptor=self.descriptor,
                                                  scoring_function=scoring_function,
                                                  has_logit=self.has_logit,
@@ -204,12 +204,12 @@ class BaseNetwork(object):
         self.nodes = []
         for node in nodes:
             try:
-                assert issubclass(type(node), Nodes.BaseNode)
+                assert issubclass(type(node), nodes.BaseNode)
                 self.nodes.append(node)
                 continue
             except AssertionError:
                 logger_network.error(
-                    f"{node} is not an instance of {Nodes.BaseNode}")
+                    f"{node} is not an instance of {nodes.BaseNode}")
                 continue
             except TypeError:
                 logger_network.error(f"TypeError : {node.__class__}")
@@ -262,7 +262,7 @@ class BaseNetwork(object):
         if edges:
             self.set_edges(edges=edges)
             if overwrite:
-                builder = Builders.VerticesDefiner(
+                builder = builders.VerticesDefiner(
                     descriptor=self.descriptor)  # init worker
                 builder.skeleton['V'] = builder.vertices  # 1 stage
                 builder.skeleton['E'] = self.edges
@@ -718,7 +718,7 @@ class BaseNetwork(object):
 
 class DiscreteBN(BaseNetwork):
     """
-    Bayesian Network with Discrete Types of Nodes
+    Bayesian Network with Discrete Types of nodes
     """
 
     def __init__(self):
@@ -732,7 +732,7 @@ class DiscreteBN(BaseNetwork):
 
 class ContinuousBN(BaseNetwork):
     """
-    Bayesian Network with Continuous Types of Nodes
+    Bayesian Network with Continuous Types of nodes
     """
 
     def __init__(self, use_mixture: bool = False):
@@ -746,7 +746,7 @@ class ContinuousBN(BaseNetwork):
 
 class HybridBN(BaseNetwork):
     """
-    Bayesian Network with Mixed Types of Nodes
+    Bayesian Network with Mixed Types of nodes
     """
 
     def __init__(self, has_logit: bool = False, use_mixture: bool = False):
