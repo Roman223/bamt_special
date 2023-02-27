@@ -216,7 +216,6 @@ class HillClimbDefiner(EdgesDefiner, VerticesDefiner):
         :param progress_bar: verbose regime
         :param white_list: list of allowed edges
         """
-        import utils.GraphUtils as gru
         if not all([i in ['disc', 'disc_num'] for i in gru.nodes_types(data).values()]):
             logger_builder.error(
                 f"K2 deals only with discrete data. Continuous data: {[col for col, type in gru.nodes_types(data).items() if type not in ['disc', 'disc_num']]}")
