@@ -903,7 +903,7 @@ class LogitNode(BaseNode):
             node_path = os.path.abspath(
                 os.path.join(STORAGE, user, f"{self.name.replace(' ', '_')}")
             )
-            os.makedirs(node_path)
+            os.makedirs(node_path, exist_ok=True)
             path = os.path.abspath(os.path.join(node_path, f"{self.name.replace(' ', '_')}.joblib.compressed"))
 
             joblib.dump(self.classifier, path, compress=True, protocol=4)
@@ -1030,7 +1030,7 @@ class ConditionalLogitNode(BaseNode):
                         node_path = os.path.abspath(
                             os.path.join(STORAGE, user, f"{self.name.replace(' ', '_')}")
                         )
-                        os.makedirs(node_path)
+                        os.makedirs(node_path, exist_ok=True)
                         path = os.path.abspath(os.path.join(node_path, f"{comb}.joblib.compressed"))
 
                         joblib.dump(model, path, compress=True, protocol=4)
