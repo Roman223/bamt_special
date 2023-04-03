@@ -9,6 +9,7 @@ class BasePreprocessor(object):
     """
     Base for Preprocessor
     """
+
     def __init__(self):
         self.nodes_signs = {}
         self.nodes_types = {}
@@ -90,7 +91,7 @@ class Preprocessor(BasePreprocessor):
         if not columns_disc:
             logger_preprocessor.info("No one column is discrete")
 
-    def apply(self, data: DataFrame, dropna:bool = True) -> Tuple[DataFrame, Dict]:
+    def apply(self, data: DataFrame, dropna: bool = True) -> Tuple[DataFrame, Dict]:
         """
         Apply pipeline
         data: data to apply on
