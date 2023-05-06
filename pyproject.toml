@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "BAMT_special"
+name = "BAMT"
 version = "1.1.32"
 description = "data modeling and analysis tool based on Bayesian networks"
 authors = ["Roman Netrogolov <romius2001@gmail.com>"]
@@ -11,7 +11,7 @@ classifiers = ["Programming Language :: Python :: 3",
 	       "Topic :: Scientific/Engineering :: Mathematics"]
 
 packages = [
-    { include = "bamt_special" }
+    { include = "bamt" }
 ]
 
 [tool.poetry.dependencies]
