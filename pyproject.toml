@@ -11,7 +11,7 @@ classifiers = ["Programming Language :: Python :: 3",
 	       "Topic :: Scientific/Engineering :: Mathematics"]
 
 packages = [
-    { include = "bamt" }
+    { include = "bamt_special" }
 ]
 
 [tool.poetry.dependencies]
