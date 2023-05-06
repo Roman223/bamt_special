@@ -9,7 +9,7 @@ import math
 from .base import BaseNode
 from .schema import CondGaussParams
 
-from bamt.log import logger_nodes
+from bamt_special.log import logger_nodes
 
 from sklearn import linear_model
 from sklearn.metrics import mean_squared_error as mse

@@ -1,5 +1,5 @@
-from bamt.utils import GraphUtils as gru
-from bamt.log import logger_preprocessor
+from bamt_special.utils import GraphUtils as gru
+from bamt_special.log import logger_preprocessor
 from pandas import DataFrame
 
 from typing import Tuple, Dict

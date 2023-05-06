@@ -1,4 +1,4 @@
-from bamt.config import config
+from bamt_special.config import config
 
 from typing import Union
 

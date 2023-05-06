@@ -3,7 +3,7 @@ import itertools
 
 from .base import BaseNode
 from .schema import CondMixtureGaussParams
-from bamt.utils.MathUtils import component
+from bamt_special.utils.MathUtils import component
 
 from pandas import DataFrame
 from gmr import GMM

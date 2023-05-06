@@ -1,4 +1,4 @@
-from bamt.utils.MathUtils import get_brave_matrix, get_proximity_matrix
+from bamt_special.utils.MathUtils import get_brave_matrix, get_proximity_matrix
 
 
 class BigBraveBN:

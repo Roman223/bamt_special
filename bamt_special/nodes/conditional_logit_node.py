@@ -7,7 +7,7 @@ import itertools
 
 from .base import BaseNode
 from .schema import LogitParams
-from bamt.log import logger_nodes
+from bamt_special.log import logger_nodes
 
 from sklearn import linear_model
 from pandas import DataFrame

@@ -26,10 +26,10 @@ Strategies to improve Greedy Hill-Climbing:
     of these steps.
 """
 
-from bamt.external.pyBN.classes.bayesnet import BayesNet
-from bamt.external.pyBN.utils.graph import would_cause_cycle
-from bamt.redef_info_scores import log_lik_local, BIC_local, AIC_local
-from bamt.mi_entropy_gauss import mi_gauss
+from bamt_special.external.pyBN.classes.bayesnet import BayesNet
+from bamt_special.external.pyBN.utils.graph import would_cause_cycle
+from bamt_special.redef_info_scores import log_lik_local, BIC_local, AIC_local
+from bamt_special.mi_entropy_gauss import mi_gauss
 
 
 def hc(data, metric='MI', max_iter=200, debug=False, init_nodes=None, restriction=None,

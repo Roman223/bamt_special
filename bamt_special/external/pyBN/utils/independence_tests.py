@@ -19,7 +19,7 @@ __author__ = """Nicholas Cullen <ncullen.th@dartmouth.edu>"""
 
 import numpy as np
 
-from bamt.external.pyBN.utils.data import unique_bins
+from bamt_special.external.pyBN.utils.data import unique_bins
 
 
 def mutual_information(data, conditional=False):

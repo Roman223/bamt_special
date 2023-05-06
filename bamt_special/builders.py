@@ -4,18 +4,18 @@ from pgmpy.base import DAG
 from pgmpy.estimators import HillClimbSearch
 from pandas import DataFrame
 
-from bamt.redef_HC import hc as hc_method
+from bamt_special.redef_HC import hc as hc_method
 
-from bamt.nodes.discrete_node import DiscreteNode
-from bamt.nodes.gaussian_node import GaussianNode
-from bamt.nodes.conditional_logit_node import ConditionalLogitNode
-from bamt.nodes.logit_node import LogitNode
-from bamt.nodes.mixture_gaussian_node import MixtureGaussianNode
-from bamt.nodes.conditional_mixture_gaussian_node import ConditionalMixtureGaussianNode
-from bamt.nodes.conditional_gaussian_node import ConditionalGaussianNode
+from bamt_special.nodes.discrete_node import DiscreteNode
+from bamt_special.nodes.gaussian_node import GaussianNode
+from bamt_special.nodes.conditional_logit_node import ConditionalLogitNode
+from bamt_special.nodes.logit_node import LogitNode
+from bamt_special.nodes.mixture_gaussian_node import MixtureGaussianNode
+from bamt_special.nodes.conditional_mixture_gaussian_node import ConditionalMixtureGaussianNode
+from bamt_special.nodes.conditional_gaussian_node import ConditionalGaussianNode
 
-from bamt.log import logger_builder
-from bamt.utils import GraphUtils as gru
+from bamt_special.log import logger_builder
+from bamt_special.utils import GraphUtils as gru
 
 from typing import Dict, List, Optional, Tuple, Callable, TypedDict, Union, Sequence
 
@@ -240,7 +240,7 @@ class HillClimbDefiner(VerticesDefiner, EdgesDefiner):
         :param progress_bar: verbose regime
         :param white_list: list of allowed edges
         """
-        import bamt.utils.GraphUtils as gru
+        import bamt_special.utils.GraphUtils as gru
         if not all([i in ['disc', 'disc_num']
                     for i in gru.nodes_types(data).values()]):
             logger_builder.error(

@@ -1,2 +1,2 @@
-from bamt.external.pyBN.classes import *
-from bamt.external.pyBN.utils import *
+from bamt_special.external.pyBN.classes import *
+from bamt_special.external.pyBN.utils import *

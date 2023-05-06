@@ -6,7 +6,7 @@ import random
 import math
 
 from .base import BaseNode
-from bamt.log import logger_nodes
+from bamt_special.log import logger_nodes
 
 from .schema import GaussianParams
 

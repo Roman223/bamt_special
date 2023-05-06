@@ -13,13 +13,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pyvis.network import Network
 from pyitlib import discrete_random_variable as drv
 
-from bamt.builders import ParamDict
-from bamt.log import logger_network
-from bamt.config import config
+from bamt_special.builders import ParamDict
+from bamt_special.log import logger_network
+from bamt_special.config import config
 
-from bamt.nodes.base import BaseNode
+from bamt_special.nodes.base import BaseNode
 
-import bamt.builders as Builders
+import bamt_special.builders as Builders
 
 from typing import Dict, Tuple, List, Callable, Optional, Type, Union, Any, Sequence
 
@@ -167,7 +167,7 @@ class BaseNetwork(object):
         """
         Provide calculation of link strength according mutual information between node and its parent(-s) values.
         """
-        import bamt.utils.GraphUtils as gru
+        import bamt_special.utils.GraphUtils as gru
         data_descriptor = gru.nodes_types(discretized_data)
         if not all([i in ['disc', 'disc_num'] for i in data_descriptor.values()]):
             logger_network.error(
