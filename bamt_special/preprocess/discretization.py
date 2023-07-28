@@ -5,7 +5,6 @@ from sklearn.preprocessing import KBinsDiscretizer
 from typing import Tuple
 
 
-
 def get_nodes_sign(data: pd.DataFrame) -> dict:
     """Function to define sign of the node
        neg - if node has negative values
@@ -16,15 +15,15 @@ def get_nodes_sign(data: pd.DataFrame) -> dict:
 
     Returns:
         dict: output dictionary where 'key' - node name and 'value' - sign of data
-    """    
+    """
     nodes_types = get_nodes_type(data)
     columns_sign = dict()
     for c in data.columns.to_list():
-        if nodes_types[c] == 'cont':
+        if nodes_types[c] == "cont":
             if (data[c] < 0).any():
-                columns_sign[c] = 'neg'
+                columns_sign[c] = "neg"
             else:
-                columns_sign[c] = 'pos'
+                columns_sign[c] = "pos"
     return columns_sign
 
 
@@ -40,16 +39,22 @@ def get_nodes_type(data: pd.DataFrame) -> dict:
     """
     column_type = dict()
     for c in data.columns.to_list():
-        if (data[c].dtypes == 'float64') | (data[c].dtypes == 'float32'):
-            column_type[c] = 'cont'
-        if (data[c].dtypes == 'str') | (data[c].dtypes == 'O') | (data[c].dtypes == 'b'):
-            column_type[c] = 'disc'
-        if ((data[c].dtypes == 'int64') | (data[c].dtypes == 'int32')):
-            column_type[c] = 'disc'
+        if (data[c].dtypes == "float64") | (data[c].dtypes == "float32"):
+            column_type[c] = "cont"
+        if (
+            (data[c].dtypes == "str")
+            | (data[c].dtypes == "O")
+            | (data[c].dtypes == "b")
+        ):
+            column_type[c] = "disc"
+        if (data[c].dtypes == "int64") | (data[c].dtypes == "int32"):
+            column_type[c] = "disc"
     return column_type
 
 
-def discretization(data: pd.DataFrame, method: str, columns: list, bins: int = 5) -> Tuple[pd.DataFrame, KBinsDiscretizer]:
+def discretization(
+    data: pd.DataFrame, method: str, columns: list, bins: int = 5
+) -> Tuple[pd.DataFrame, KBinsDiscretizer]:
     """Discretization of continuous parameters
 
     Args:
@@ -65,26 +70,41 @@ def discretization(data: pd.DataFrame, method: str, columns: list, bins: int = 5
     data = data.dropna()
     data.reset_index(inplace=True, drop=True)
     d_data = copy(data)
-    est = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform')
-    if method == "equal_intervals":
-        est = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform')
+    est = KBinsDiscretizer(n_bins=bins, encode="ordinal")
+    strategy_dict = {
+        "equal_intervals": "uniform",
+        "equal_frequency": "quantile",
+        "kmeans": "kmeans",
+    }
+    if method in strategy_dict:
+        est.strategy = strategy_dict[method]
         data_discrete = est.fit_transform(d_data.loc[:, columns].values)
-        d_data[columns] = data_discrete.astype('int')
-    elif method == "equal_frequency":
-        est = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='quantile')
-        data_discrete = est.fit_transform(d_data.loc[:, columns].values)
-        d_data[columns] = data_discrete.astype('int')
-    elif method == "kmeans":
-        est = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='kmeans')
-        data_discrete = est.fit_transform(d_data.loc[:, columns].values)
-        d_data[columns] = data_discrete.astype('int')
+        d_data[columns] = data_discrete.astype("int")
     else:
-        raise Exception('This discretization method is not supported')
+        raise Exception("This discretization method is not supported")
 
     return d_data, est
 
 
-def code_categories(data: pd.DataFrame, method: str, columns: list) -> Tuple[pd.DataFrame, dict]:
+def label_encoding(data, columns):
+    d_data = copy(data)
+    encoder_dict = dict()
+    for column in columns:
+        le = preprocessing.LabelEncoder()
+        d_data[column] = le.fit_transform(d_data[column].values)
+        mapping = dict(zip(le.classes_, range(len(le.classes_))))
+        encoder_dict[column] = mapping
+    return d_data, encoder_dict
+
+
+def onehot_encoding(data, columns):
+    d_data = pd.get_dummies(data, columns=columns)
+    return d_data, None
+
+
+def code_categories(
+    data: pd.DataFrame, method: str, columns: list
+) -> Tuple[pd.DataFrame, dict]:
     """Encoding categorical parameters
 
     Args:
@@ -98,23 +118,18 @@ def code_categories(data: pd.DataFrame, method: str, columns: list) -> Tuple[pd.
     """
     data = data.dropna()
     data.reset_index(inplace=True, drop=True)
-    d_data = copy(data)
-    encoder_dict = dict()
-    if method == 'label':
-        for column in columns:
-            le = preprocessing.LabelEncoder()
-            d_data[column] = le.fit_transform(d_data[column].values)
-            mapping = dict(zip(le.classes_, range(len(le.classes_))))
-            encoder_dict[column] = mapping
-    elif method == 'onehot':
-        d_data = pd.get_dummies(d_data, columns=columns)
+    encoding_func_dict = {"label": label_encoding, "onehot": onehot_encoding}
+    if method in encoding_func_dict:
+        d_data, encoder_dict = encoding_func_dict[method](data, columns)
     else:
-        raise Exception('This encoding method is not supported')
+        raise Exception("This encoding method is not supported")
 
     return d_data, encoder_dict
 
 
-def inverse_discretization(data: pd.DataFrame, columns: list, discretizer: KBinsDiscretizer) -> pd.DataFrame:
+def inverse_discretization(
+    data: pd.DataFrame, columns: list, discretizer: KBinsDiscretizer
+) -> pd.DataFrame:
     """Inverse discretization for numeric params
 
     Args:
