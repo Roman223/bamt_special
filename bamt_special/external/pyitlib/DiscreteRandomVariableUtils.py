@@ -7,17 +7,17 @@ NONE_REPLACEMENT = -32768
 
 
 def information_mutual_conditional(
-    x,
-    y,
-    z,
-    cartesian_product=False,
-    base=2,
-    fill_value=-1,
-    estimator="ML",
-    alphabet_x=None,
-    alphabet_y=None,
-    Alphabet_Z=None,
-    keep_dims=False,
+        x,
+        y,
+        z,
+        cartesian_product=False,
+        base=2,
+        fill_value=-1,
+        estimator="ML",
+        alphabet_x=None,
+        alphabet_y=None,
+        Alphabet_Z=None,
+        keep_dims=False,
 ):
     x, fill_value_X = _sanitise_array_input(x, fill_value)
     y, fill_value_Y = _sanitise_array_input(y, fill_value)
@@ -112,7 +112,6 @@ def information_mutual_conditional(
         Alphabet_Z = np.reshape(Alphabet_Z, (-1, Alphabet_Z.shape[-1]))
         I = []
         for i in range(z.shape[0]):
-
             def f(X, Y, Alphabet_X, Alphabet_Y):
                 return information_mutual_conditional(
                     X,
@@ -150,28 +149,28 @@ def information_mutual_conditional(
 
     for i in range(x.shape[0]):
         I_ = (
-            entropy_joint(
-                np.vstack((x[i], z[i])),
-                base,
-                fill_value,
-                estimator,
-                _vstack_pad((alphabet_x[i], Alphabet_Z[i]), fill_value),
-            )
-            + entropy_joint(
-                np.vstack((y[i], z[i])),
-                base,
-                fill_value,
-                estimator,
-                _vstack_pad((alphabet_y[i], Alphabet_Z[i]), fill_value),
-            )
-            - entropy_joint(
-                np.vstack((x[i], y[i], z[i])),
-                base,
-                fill_value,
-                estimator,
-                _vstack_pad((alphabet_x[i], alphabet_y[i], Alphabet_Z[i]), fill_value),
-            )
-            - entropy_joint(z[i], base, fill_value, estimator, Alphabet_Z[i])
+                entropy_joint(
+                    np.vstack((x[i], z[i])),
+                    base,
+                    fill_value,
+                    estimator,
+                    _vstack_pad((alphabet_x[i], Alphabet_Z[i]), fill_value),
+                )
+                + entropy_joint(
+            np.vstack((y[i], z[i])),
+            base,
+            fill_value,
+            estimator,
+            _vstack_pad((alphabet_y[i], Alphabet_Z[i]), fill_value),
+        )
+                - entropy_joint(
+            np.vstack((x[i], y[i], z[i])),
+            base,
+            fill_value,
+            estimator,
+            _vstack_pad((alphabet_x[i], alphabet_y[i], Alphabet_Z[i]), fill_value),
+        )
+                - entropy_joint(z[i], base, fill_value, estimator, Alphabet_Z[i])
         )
         I[i] = I_
 
@@ -185,15 +184,15 @@ def information_mutual_conditional(
 
 
 def information_mutual(
-    X,
-    Y=None,
-    cartesian_product=False,
-    base=2,
-    fill_value=-1,
-    estimator="ML",
-    Alphabet_X=None,
-    Alphabet_Y=None,
-    keep_dims=False,
+        X,
+        Y=None,
+        cartesian_product=False,
+        base=2,
+        fill_value=-1,
+        estimator="ML",
+        Alphabet_X=None,
+        Alphabet_Y=None,
+        keep_dims=False,
 ):
     H_conditional = entropy_conditional(
         X, Y, cartesian_product, base, fill_value, estimator, Alphabet_X, Alphabet_Y
@@ -236,7 +235,7 @@ def entropy_pmf(P, base=2, require_valid_pmf=True, keep_dims=False):
 
 
 def entropy_joint(
-    X, base=2, fill_value=-1, estimator="ML", Alphabet_X=None, keep_dims=False
+        X, base=2, fill_value=-1, estimator="ML", Alphabet_X=None, keep_dims=False
 ):
     X, fill_value_X = _sanitise_array_input(X, fill_value)
     if Alphabet_X is not None:
@@ -302,15 +301,15 @@ def entropy_joint(
 
 
 def entropy_conditional(
-    X,
-    Y=None,
-    cartesian_product=False,
-    base=2,
-    fill_value=-1,
-    estimator="ML",
-    Alphabet_X=None,
-    Alphabet_Y=None,
-    keep_dims=False,
+        X,
+        Y=None,
+        cartesian_product=False,
+        base=2,
+        fill_value=-1,
+        estimator="ML",
+        Alphabet_X=None,
+        Alphabet_Y=None,
+        keep_dims=False,
 ):
     if Y is None:
         Y = X
@@ -485,10 +484,10 @@ def entropy(X, base=2, fill_value=-1, estimator="ML", Alphabet_X=None, keep_dims
         # P_0 is the probability mass assigned to each additional empty bin
         P, P_0 = _estimate_probabilities(L, estimator, n_additional_empty_bins)
         H_0 = (
-            n_additional_empty_bins
-            * P_0
-            * -np.log2(P_0 + np.spacing(0))
-            / np.log2(base)
+                n_additional_empty_bins
+                * P_0
+                * -np.log2(P_0 + np.spacing(0))
+                / np.log2(base)
         )
         H[i] = entropy_pmf(P, base, require_valid_pmf=False) + H_0
 
@@ -496,6 +495,159 @@ def entropy(X, base=2, fill_value=-1, estimator="ML", Alphabet_X=None, keep_dims
     H = np.reshape(H, orig_shape_H)
 
     if keep_dims:
+        H = H[..., np.newaxis]
+
+    return H
+
+
+def divergence_jensenshannon(X, Y=None, cartesian_product=False, base=2,
+                             fill_value=-1, estimator='ML', Alphabet_X=None,
+                             Alphabet_Y=None, keep_dims=False):
+    """
+    Returns the Jensen-Shannon divergence between arrays X and Y, each
+    containing discrete random variable realisations.
+    """
+    if Y is None:
+        Y = X
+        cartesian_product = True
+        Alphabet_Y = Alphabet_X
+
+    X, fill_value_X = _sanitise_array_input(X, fill_value)
+    Y, fill_value_Y = _sanitise_array_input(Y, fill_value)
+    if Alphabet_X is not None:
+        Alphabet_X, fill_value_Alphabet_X = _sanitise_array_input(Alphabet_X,
+                                                                  fill_value)
+        Alphabet_X, _ = _autocreate_alphabet(Alphabet_X, fill_value_Alphabet_X)
+    else:
+        Alphabet_X, fill_value_Alphabet_X = _autocreate_alphabet(X,
+                                                                 fill_value_X)
+    if Alphabet_Y is not None:
+        Alphabet_Y, fill_value_Alphabet_Y = _sanitise_array_input(Alphabet_Y,
+                                                                  fill_value)
+        Alphabet_Y, _ = _autocreate_alphabet(Alphabet_Y, fill_value_Alphabet_Y)
+    else:
+        Alphabet_Y, fill_value_Alphabet_Y = _autocreate_alphabet(Y,
+                                                                 fill_value_Y)
+
+    if X.size == 0:
+        raise ValueError("arg X contains no elements")
+    if Y.size == 0:
+        raise ValueError("arg Y contains no elements")
+    if np.any(_isnan(X)):
+        raise ValueError("arg X contains NaN values")
+    if np.any(_isnan(Y)):
+        raise ValueError("arg Y contains NaN values")
+    if Alphabet_X.size == 0:
+        raise ValueError("arg Alphabet_X contains no elements")
+    if np.any(_isnan(Alphabet_X)):
+        raise ValueError("arg Alphabet_X contains NaN values")
+    if Alphabet_Y.size == 0:
+        raise ValueError("arg Alphabet_Y contains no elements")
+    if np.any(_isnan(Alphabet_Y)):
+        raise ValueError("arg Alphabet_Y contains NaN values")
+    if _isnan(fill_value_X):
+        raise ValueError("fill value for arg X is NaN")
+    if _isnan(fill_value_Y):
+        raise ValueError("fill value for arg Y is NaN")
+    if X.shape[:-1] != Alphabet_X.shape[:-1]:
+        raise ValueError("leading dimensions of args X and Alphabet_X do not "
+                         "match")
+    if Y.shape[:-1] != Alphabet_Y.shape[:-1]:
+        raise ValueError("leading dimensions of args Y and Alphabet_Y do not "
+                         "match")
+    if not cartesian_product and X.shape[:-1] != Y.shape[:-1]:
+        raise ValueError("dimensions of args X and Y do not match")
+    if not (np.isscalar(base) and np.isreal(base) and base > 0):
+        raise ValueError("arg base not a positive real-valued scalar")
+
+    S, fill_value = _map_observations_to_integers((X, Alphabet_X,
+                                                   Y, Alphabet_Y),
+                                                  (fill_value_X,
+                                                   fill_value_Alphabet_X,
+                                                   fill_value_Y,
+                                                   fill_value_Alphabet_Y))
+    X, Alphabet_X, Y, Alphabet_Y = S
+
+    if not cartesian_product:
+        H = np.empty(X.shape[:-1])
+        if H.ndim > 0:
+            H[:] = np.NaN
+        else:
+            H = np.float64(np.NaN)
+    else:
+        def f(X, Y, Alphabet_X, Alphabet_Y):
+            return divergence_jensenshannon(X, Y, False, base, fill_value,
+                                            estimator, Alphabet_X, Alphabet_Y)
+
+        return _cartesian_product_apply(X, Y, f, Alphabet_X, Alphabet_Y)
+
+    # Re-shape H, X and Y, so that we may handle multi-dimensional arrays
+    # equivalently and iterate across 0th axis
+    X = np.reshape(X, (-1, X.shape[-1]))
+    Y = np.reshape(Y, (-1, Y.shape[-1]))
+    Alphabet_X = np.reshape(Alphabet_X, (-1, Alphabet_X.shape[-1]))
+    Alphabet_Y = np.reshape(Alphabet_Y, (-1, Alphabet_Y.shape[-1]))
+    orig_shape_H = H.shape
+    H = np.reshape(H, (-1, 1))
+
+    _verify_alphabet_sufficiently_large(X, Alphabet_X, fill_value)
+    _verify_alphabet_sufficiently_large(Y, Alphabet_Y, fill_value)
+
+    # NB: Observations are not considered jointly, thus elements in each row
+    # are sorted independently
+    X = np.sort(X, axis=1)
+    Y = np.sort(Y, axis=1)
+
+    # Compute symbol run-lengths
+    # Compute symbol change indicators
+    B = X[:, 1:] != X[:, :-1]
+    C = Y[:, 1:] != Y[:, :-1]
+    for i in range(X.shape[0]):
+        # Obtain symbol change positions
+        I = np.append(np.where(B[i]), X.shape[1] - 1)
+        # Compute run lengths
+        L = np.diff(np.append(-1, I))
+
+        alphabet_X = X[i, I]
+        if estimator != 'ML':
+            L, alphabet_X = _append_empty_bins_using_alphabet(L, alphabet_X,
+                                                              Alphabet_X[i],
+                                                              fill_value)
+        L, alphabet_X = _remove_counts_at_fill_value(L, alphabet_X, fill_value)
+        if not np.any(L):
+            continue
+        P1, _ = _estimate_probabilities(L, estimator)
+
+        # Obtain symbol change positions
+        J = np.append(np.where(C[i]), Y.shape[1] - 1)
+        # Compute run lengths
+        L = np.diff(np.append(-1, J))
+
+        alphabet_Y = Y[i, J]
+        if estimator != 'ML':
+            L, alphabet_Y = _append_empty_bins_using_alphabet(L, alphabet_Y,
+                                                              Alphabet_Y[i],
+                                                              fill_value)
+        L, alphabet_Y = _remove_counts_at_fill_value(L, alphabet_Y, fill_value)
+        if not np.any(L):
+            continue
+        P2, _ = _estimate_probabilities(L, estimator)
+
+        # Merge probability distributions, so that common symbols have common
+        # array location
+        Alphabet = np.union1d(alphabet_X, alphabet_Y)
+        P = np.zeros_like(Alphabet, dtype=P1.dtype)
+        Q = np.zeros_like(Alphabet, dtype=P2.dtype)
+        P[np.in1d(Alphabet, alphabet_X, assume_unique=True)] = P1
+        Q[np.in1d(Alphabet, alphabet_Y, assume_unique=True)] = P2
+
+        H[i] = entropy_pmf(0.5 * P + 0.5 * Q, base) - \
+               0.5 * entropy_pmf(P, base) - 0.5 * entropy_pmf(Q, base)
+
+    # Reverse re-shaping
+    H = np.reshape(H, orig_shape_H)
+
+    if keep_dims and not cartesian_product:
         H = H[..., np.newaxis]
 
     return H
@@ -571,7 +723,7 @@ def _map_observations_to_integers(Symbol_matrices, Fill_values):
     assert len(Symbol_matrices) == len(Fill_values)
     FILL_VALUE = -1
     if np.any([A.dtype != "int" for A in Symbol_matrices]) or np.any(
-        np.array(Fill_values) != FILL_VALUE
+            np.array(Fill_values) != FILL_VALUE
     ):
         L = sklearn.preprocessing.LabelEncoder()
         F = [np.atleast_1d(v) for v in Fill_values]
@@ -606,7 +758,7 @@ def _isnan_element(x):
 
 
 def _determine_number_additional_empty_bins(
-    Counts, Alphabet, Full_Alphabet, fill_value
+        Counts, Alphabet, Full_Alphabet, fill_value
 ):
     alphabet_sizes = np.sum(np.atleast_2d(Full_Alphabet) != fill_value, axis=-1)
     if np.any(alphabet_sizes != fill_value):
@@ -641,12 +793,12 @@ def _estimate_probabilities(Counts, estimator, n_additional_empty_bins=0):
         else:
             alpha = 0
         Theta = (Counts + alpha) / (
-            1.0 * np.sum(Counts) + alpha * (Counts.size + n_additional_empty_bins)
+                1.0 * np.sum(Counts) + alpha * (Counts.size + n_additional_empty_bins)
         )
         # Theta_0 is the probability mass assigned to each additional empty bin
         if n_additional_empty_bins > 0:
             Theta_0 = alpha / (
-                1.0 * np.sum(Counts) + alpha * (Counts.size + n_additional_empty_bins)
+                    1.0 * np.sum(Counts) + alpha * (Counts.size + n_additional_empty_bins)
             )
         else:
             Theta_0 = 0
@@ -723,3 +875,49 @@ def _vstack_pad(arrays, fill_value):
         for A in arrays
     ]
     return np.vstack(arrays)
+
+
+def _append_empty_bins_using_alphabet(Counts, Alphabet, Full_Alphabet,
+                                      fill_value):
+    if Alphabet.ndim == 1:
+        assert (Full_Alphabet.ndim == 1)
+        A = np.setdiff1d(Full_Alphabet[Full_Alphabet != fill_value], Alphabet,
+                         assume_unique=True)
+        Alphabet = np.append(Alphabet, A)
+        Counts = np.append(Counts, np.tile(0, Alphabet.size - Counts.size))
+        I = Alphabet.argsort(kind='mergesort')
+        Alphabet = Alphabet[I]
+        Counts = Counts[I]
+        assert (np.all(Alphabet[1:] != Alphabet[:-1]))
+        return Counts, Alphabet
+    else:
+        assert (Full_Alphabet.shape[0] == 2 and Alphabet.shape[0] == 2)
+        Alph1 = np.unique(Full_Alphabet[0, Full_Alphabet[0] != fill_value])
+        Alph2 = np.unique(Full_Alphabet[1, Full_Alphabet[1] != fill_value])
+        A = np.zeros((2, Alph1.size * Alph2.size), dtype=Full_Alphabet.dtype)
+        c = 0
+        for j in range(Alph2.size):
+            for i in range(Alph1.size):
+                A[0, c] = Alph1[i]
+                A[1, c] = Alph2[j]
+                c = c + 1
+        Unseen = np.ones(A.shape[-1], dtype='bool')
+        i = j = 0
+        while i < Alphabet.shape[-1] and j < A.shape[-1]:
+            if np.all(Alphabet[:, i] == A[:, j]):
+                Unseen[j] = False
+                j = j + 1
+                i = i + 1
+            elif np.any(Alphabet[:, i] > A[:, j]):
+                j = j + 1
+            else:
+                i = i + 1
+        Alphabet = np.hstack((Alphabet, A[:, Unseen]))
+        Counts = np.append(Counts, np.tile(0, Alphabet.size - Counts.size))
+        # Sort columns
+        for i in range(Alphabet.shape[0]):
+            I = Alphabet[i].argsort(kind='mergesort')
+            Alphabet = Alphabet[:, I]
+            Counts = Counts[I]
+        assert (np.all(np.any(Alphabet[:, 1:] != Alphabet[:, :-1], axis=0)))
+        return Counts, Alphabet
