@@ -11,7 +11,7 @@ import os
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from pyvis.network import Network
-from bamt.external.pyitlib.DiscreteRandomVariableUtils import (
+from bamt_special.external.pyitlib.DiscreteRandomVariableUtils import (
     information_mutual,
     information_mutual_conditional,
     entropy_conditional,
@@ -170,14 +170,6 @@ class BaseNetwork(object):
                 data=data,
                 descriptor=self.descriptor,
                 scoring_function=scoring_function,
-                has_logit=self.has_logit,
-                use_mixture=self.use_mixture,
-                regressor=regressor,
-            )
-        elif optimizer == "Evo":
-            worker = EvoStructureBuilder(
-                data=data,
-                descriptor=self.descriptor,
                 has_logit=self.has_logit,
                 use_mixture=self.use_mixture,
                 regressor=regressor,
